@@ -1,0 +1,22 @@
+{
+  "platform": {
+    "apiRuntime": "node:20"
+  },
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/api/*", "*.png", "*.jpg", "*.css", "*.js"]
+  },
+  "routes": [
+    {
+      "route": "/admin.html",
+      "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/api/*",
+      "allowedRoles": ["anonymous"]
+    }
+  ],
+  "mimeTypes": {
+    ".png": "image/png"
+  }
+}

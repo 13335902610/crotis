@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vision Pro CORTIS 舞蹈室预约</title>
+  <meta name="description" content="CORTIS Vision Pro 舞蹈室预约系统，在线选择时间、填写信息、预约体验，管理员可查看与确认记录。">
+  <meta name="robots" content="index,follow">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="CORTIS Vision Pro 舞蹈室预约">
+  <meta property="og:description" content="在线预约 CORTIS Vision Pro 舞蹈室体验，管理员可登录后台管理预约状态。">
+  <meta property="og:image" content="./cortis-hero.png">
+  <meta property="og:locale" content="zh_CN">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172026;
+      --muted: #66727c;
+      --line: #d9e0e5;
+      --paper: #f7f8f5;
+      --panel: #ffffff;
+      --teal: #0f766e;
+      --teal-dark: #0a4f4b;
+      --coral: #e35d4f;
+      --blue: #315f9f;
+      --gold: #c69229;
+      --danger: #b42318;
+      --shadow: 0 18px 46px rgba(23, 32, 38, 0.14);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background:
+        linear-gradient(140deg, rgba(15, 118, 110, 0.12), transparent 34%),
+        linear-gradient(330deg, rgba(227, 93, 79, 0.10), transparent 36%),
+        var(--paper);
+      min-height: 100vh;
+    }
+
+    button, input, select { font: inherit; }
+
+    .app {
+      width: min(430px, 100%);
+      min-height: 100vh;
+      margin: 0 auto;
+      background: var(--paper);
+      box-shadow: 0 0 0 1px rgba(23, 32, 38, 0.06);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero {
+      position: relative;
+      color: #fff;
+      min-height: 390px;
+      padding: 18px 18px 20px;
+      background:
+        linear-gradient(180deg, rgba(14, 23, 31, 0.10), rgba(14, 23, 31, 0.78)),
+        url("./cortis-hero.png") center top / cover no-repeat;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+      opacity: 0.94;
+      position: absolute;
+      top: 18px;
+      left: 18px;
+      right: 18px;
+    }
+
+    .tag, .address {
+      border: 1px solid rgba(255,255,255,0.36);
+      background: rgba(255,255,255,0.16);
+      backdrop-filter: blur(14px);
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 0 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .address {
+      align-self: flex-start;
+      margin: 0 0 12px;
+      padding: 7px 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+      line-height: 1.12;
+      letter-spacing: 0;
+      max-width: 330px;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 330px;
+      font-size: 14px;
+      line-height: 1.65;
+      color: rgba(255,255,255,0.88);
+    }
+
+    main { padding: 16px 14px 118px; }
+
+    .summary {
+      transform: translateY(-24px);
+      margin-bottom: -10px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .metric, section {
+      background: var(--panel);
+      border: 1px solid rgba(217, 224, 229, 0.9);
+      border-radius: 8px;
+    }
+
+    .metric {
+      padding: 11px 8px;
+      box-shadow: var(--shadow);
+      min-height: 74px;
+    }
+
+    .metric b {
+      display: block;
+      font-size: 18px;
+      line-height: 1.2;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    section {
+      margin-top: 14px;
+      padding: 15px;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 17px;
+      letter-spacing: 0;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .date-row, .slot-grid {
+      display: grid;
+      gap: 8px;
+    }
+
+    .date-row {
+      grid-template-columns: repeat(3, 1fr);
+      max-height: 250px;
+      overflow: auto;
+      padding-right: 2px;
+    }
+
+    .slot-grid { grid-template-columns: repeat(2, 1fr); }
+
+    .choice {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 8px;
+      min-height: 54px;
+      padding: 8px;
+      cursor: pointer;
+      transition: border-color .16s ease, transform .16s ease, background .16s ease;
+      color: var(--ink);
+    }
+
+    .choice:hover { transform: translateY(-1px); }
+
+    .choice.is-active {
+      border-color: var(--teal);
+      background: rgba(15, 118, 110, 0.08);
+      box-shadow: inset 0 0 0 1px var(--teal);
+    }
+
+    .choice[disabled] {
+      cursor: not-allowed;
+      color: #9ba5ad;
+      background: #f0f2f3;
+      transform: none;
+    }
+
+    .choice strong {
+      display: block;
+      font-size: 14px;
+      line-height: 1.25;
+    }
+
+    .choice small {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.25;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+      margin-top: 12px;
+    }
+
+    label {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    input, select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      min-height: 46px;
+      padding: 0 12px;
+      color: var(--ink);
+      outline: none;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+    }
+
+    .notice-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 10px;
+    }
+
+    .notice-list li {
+      display: grid;
+      grid-template-columns: 30px 1fr;
+      gap: 9px;
+      align-items: start;
+      color: #34414a;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .icon.teal { background: var(--teal); }
+    .icon.coral { background: var(--coral); }
+    .icon.blue { background: var(--blue); }
+    .icon.gold { background: var(--gold); }
+
+    .bottom-bar {
+      position: fixed;
+      left: 50%;
+      bottom: 0;
+      transform: translateX(-50%);
+      width: min(430px, 100%);
+      padding: 12px 14px 16px;
+      background: rgba(247, 248, 245, 0.92);
+      border-top: 1px solid rgba(217, 224, 229, 0.9);
+      backdrop-filter: blur(18px);
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .total small {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .total b {
+      display: block;
+      margin-top: 3px;
+      font-size: 17px;
+    }
+
+    .primary {
+      border: 0;
+      border-radius: 8px;
+      min-height: 48px;
+      padding: 0 20px;
+      color: #fff;
+      background: var(--teal-dark);
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 10px 24px rgba(10, 79, 75, 0.24);
+    }
+
+    .primary[disabled] {
+      opacity: .62;
+      cursor: wait;
+    }
+
+    .toast {
+      position: fixed;
+      z-index: 5;
+      left: 50%;
+      bottom: 88px;
+      width: min(396px, calc(100% - 28px));
+      transform: translate(-50%, 16px);
+      background: #172026;
+      color: #fff;
+      border-radius: 8px;
+      padding: 13px 14px;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s ease, transform .2s ease;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    @media (max-width: 360px) {
+      .hero h1 { font-size: 26px; }
+      .summary { grid-template-columns: 1fr; transform: none; margin-bottom: 0; }
+      main { padding-top: 14px; }
+      .date-row, .slot-grid { grid-template-columns: 1fr 1fr; }
+      .bottom-bar { grid-template-columns: 1fr; }
+      .primary { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="hero">
+      <div class="status-bar">
+        <span class="tag">Vision Pro 预约</span>
+        <span class="tag">单人体验席</span>
+        <a class="tag" href="./admin.html">管理员入口</a>
+      </div>
+      <div class="address">地址：江苏省徐州市</div>
+      <h1>CORTIS 舞蹈室纪录片</h1>
+      <p>近距离沉浸观看舞蹈室练习、走位和舞台准备片段。每场仅开放 1 位观众，保证设备消毒和完整观影时间。</p>
+    </header>
+
+    <main>
+      <div class="summary" aria-label="预约概览">
+        <div class="metric"><b>25 分钟</b><span>单场体验时长</span></div>
+        <div class="metric"><b>1 人</b><span>每场仅限一人</span></div>
+        <div class="metric"><b>¥39</b><span>到店确认后支付</span></div>
+      </div>
+
+      <section aria-labelledby="dateTitle">
+        <div class="section-title">
+          <h2 id="dateTitle">选择日期</h2>
+          <span class="hint">7/1 至 9/1</span>
+        </div>
+        <div class="date-row" id="dateRow"></div>
+      </section>
+
+      <section aria-labelledby="slotTitle">
+        <div class="section-title">
+          <h2 id="slotTitle">选择场次</h2>
+          <span class="hint" id="remainText">09:00-18:00 每小时一场</span>
+        </div>
+        <div class="slot-grid" id="slotGrid"></div>
+      </section>
+
+      <section aria-labelledby="contactTitle">
+        <div class="section-title">
+          <h2 id="contactTitle">联系信息</h2>
+        </div>
+        <div class="field">
+          <label for="name">预约昵称</label>
+          <input id="name" autocomplete="name" placeholder="例如：小林" />
+        </div>
+        <div class="field">
+          <label for="phone">手机号</label>
+          <input id="phone" inputmode="tel" autocomplete="tel" maxlength="11" placeholder="用于发送确认提醒" />
+        </div>
+        <div class="field">
+          <label for="source">粉丝来源</label>
+          <select id="source">
+            <option>朋友推荐</option>
+            <option>微博</option>
+            <option>小红书</option>
+            <option>B 站</option>
+            <option>线下门店</option>
+          </select>
+        </div>
+      </section>
+
+      <section aria-labelledby="noticeTitle">
+        <div class="section-title">
+          <h2 id="noticeTitle">体验须知</h2>
+        </div>
+        <ul class="notice-list">
+          <li><span class="icon teal">1</span><span>请提前 10 分钟到场，工作人员会协助佩戴 Vision Pro 并完成设备校准。</span></li>
+          <li><span class="icon coral">2</span><span>本预约仅用于现场观影体验登记，纪录片版权和公开传播需以官方授权为准。</span></li>
+          <li><span class="icon blue">3</span><span>如有眩晕、眼部不适或未成年人同行，请先告知工作人员以便调整体验时长。</span></li>
+          <li><span class="icon gold">4</span><span>近视者需佩戴美瞳或隐形眼镜观看，普通框架眼镜不适合直接佩戴设备。</span></li>
+        </ul>
+      </section>
+    </main>
+
+    <div class="bottom-bar">
+      <div class="total">
+        <small id="summaryText">请选择日期和场次</small>
+        <b id="priceText">预计 ¥39</b>
+      </div>
+      <button class="primary" id="submitBtn" type="button">确认预约</button>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </div>
+
+  <script>
+    const CONFIG = {
+      apiUrl: '/api/bookings'
+    };
+
+    const startDate = new Date(2026, 6, 1);
+    const endDate = new Date(2026, 8, 1);
+    const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    const dates = buildDates(startDate, endDate);
+    const slots = buildSlots();
+    let bookedSlots = new Set();
+
+    const state = {
+      date: dates[0],
+      slot: slots[0]
+    };
+
+    const dateRow = document.querySelector('#dateRow');
+    const slotGrid = document.querySelector('#slotGrid');
+    const remainText = document.querySelector('#remainText');
+    const summaryText = document.querySelector('#summaryText');
+    const priceText = document.querySelector('#priceText');
+    const submitBtn = document.querySelector('#submitBtn');
+    const toast = document.querySelector('#toast');
+
+    function apiReady() {
+      if (window.location.protocol === 'file:') return false;
+      return Boolean(CONFIG.apiUrl);
+    }
+
+    function buildDates(start, end) {
+      const list = [];
+      const cursor = new Date(start);
+      while (cursor <= end) {
+        const month = cursor.getMonth() + 1;
+        const day = cursor.getDate();
+        list.push({
+          label: weekdays[cursor.getDay()],
+          day: `${month}/${day}`,
+          key: `${month}-${day}`
+        });
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      return list;
+    }
+
+    function buildSlots() {
+      return Array.from({ length: 10 }, (_, index) => {
+        const hour = index + 9;
+        return { time: `${String(hour).padStart(2, '0')}:00` };
+      });
+    }
+
+    function slotKey(date, slot) {
+      return `${date.day} ${slot.time}`;
+    }
+
+    function renderDates() {
+      dateRow.innerHTML = '';
+      dates.forEach(date => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `choice${date.key === state.date.key ? ' is-active' : ''}`;
+        button.innerHTML = `<strong>${date.day}</strong><small>${date.label}</small>`;
+        button.addEventListener('click', () => {
+          state.date = date;
+          render();
+        });
+        dateRow.appendChild(button);
+      });
+    }
+
+    function renderSlots() {
+      slotGrid.innerHTML = '';
+      let availableCount = 0;
+      slots.forEach(slot => {
+        const taken = bookedSlots.has(slotKey(state.date, slot));
+        if (!taken) availableCount += 1;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.disabled = taken;
+        button.className = `choice${state.slot.time === slot.time ? ' is-active' : ''}`;
+        button.innerHTML = `<strong>${slot.time}</strong><small>${taken ? '已约满' : '剩余 1 席'}</small>`;
+        button.addEventListener('click', () => {
+          state.slot = slot;
+          updateSummary();
+          renderSlots();
+        });
+        slotGrid.appendChild(button);
+      });
+      remainText.textContent = apiReady() ? `当天剩余 ${availableCount} 场` : '预览模式，配置后台后锁定场次';
+    }
+
+    function updateSummary() {
+      summaryText.textContent = `${state.date.day} ${state.date.label} ${state.slot.time} · 1 人`;
+      priceText.textContent = '预计 ¥39';
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add('show');
+      window.clearTimeout(showToast.timer);
+      showToast.timer = window.setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    function loadDemoBookings() {
+      const demoBookings = JSON.parse(localStorage.getItem('demoBookings') || '[]');
+      bookedSlots = new Set(demoBookings.map(item => `${item.date} ${item.time}`));
+    }
+
+    async function loadAvailability() {
+      if (!apiReady()) {
+        loadDemoBookings();
+        render();
+        return;
+      }
+      try {
+        const response = await fetch(`${CONFIG.apiUrl}?action=availability`);
+        const data = await response.json();
+        bookedSlots = new Set((data.booked || []).map(item => `${item.date} ${item.time}`));
+      } catch (error) {
+        loadDemoBookings();
+        showToast('暂时无法同步预约状态，已加载本地演示数据。');
+      }
+      render();
+    }
+
+    async function submitBooking() {
+      const name = document.querySelector('#name').value.trim();
+      const phone = document.querySelector('#phone').value.trim();
+      const source = document.querySelector('#source').value;
+      const key = slotKey(state.date, state.slot);
+
+      if (bookedSlots.has(key)) {
+        showToast('这个场次刚刚被约满，请选择其他时间。');
+        return;
+      }
+      if (!name) {
+        showToast('请填写预约昵称。');
+        return;
+      }
+      if (!/^1\d{10}$/.test(phone)) {
+        showToast('请填写 11 位手机号。');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = '提交中';
+
+      try {
+        if (!apiReady()) {
+          const booking = {
+            id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+            date: state.date.day,
+            weekday: state.date.label,
+            time: state.slot.time,
+            name,
+            phone,
+            source,
+            price: 39,
+            status: 'pending',
+            createdAt: new Intl.DateTimeFormat('zh-CN', {
+              year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+            }).format(new Date()).replace(/\//g, '-')
+          };
+          const demoBookings = JSON.parse(localStorage.getItem('demoBookings') || '[]');
+          demoBookings.push(booking);
+          localStorage.setItem('demoBookings', JSON.stringify(demoBookings));
+          bookedSlots.add(key);
+          showToast(`预览预约已登记：${state.date.day} ${state.slot.time}。`);
+          render();
+          return;
+        }
+
+        const response = await fetch(CONFIG.apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'book',
+            date: state.date.day,
+            weekday: state.date.label,
+            time: state.slot.time,
+            name,
+            phone,
+            source,
+            price: 39
+          })
+        });
+        const result = await response.json();
+        if (!result.ok) throw new Error(result.message || '提交失败');
+        bookedSlots.add(key);
+        showToast(`预约已登记：${state.date.day} ${state.slot.time}，1 人。`);
+        render();
+      } catch (error) {
+        showToast(error.message || '提交失败，请稍后再试。');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '确认预约';
+      }
+    }
+
+    function render() {
+      renderDates();
+      renderSlots();
+      updateSummary();
+    }
+
+    document.querySelector('#submitBtn').addEventListener('click', submitBooking);
+    loadAvailability();
+
+    if (window.location.protocol === 'file:') {
+      showToast('当前为文件预览模式，请使用 npm start 启动本地服务再访问页面。');
+    }
+  </script>
+</body>
+</html>
