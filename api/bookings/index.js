@@ -1,25 +1,43 @@
-const { assertAdmin, bookedSlots, createBooking, json, listBookings } = require('../_shared');
+const { assertAdmin, bookedSlots, createBooking, listBookings } = require('../_shared');
 
-module.exports = async function bookings(context, req) {
+function parseBody(body) {
+  if (!body) return {};
+  if (typeof body === 'string') {
+    try {
+      return JSON.parse(body);
+    } catch {
+      return {};
+    }
+  }
+  return body;
+}
+
+module.exports = async function bookings(req, res) {
   try {
     if (req.method === 'GET') {
-      const action = req.query.action;
+      const action = req.query?.action;
       if (action === 'availability') {
-        return context.res = json({ ok: true, booked: await bookedSlots() });
+        return res.status(200).json({ ok: true, booked: await bookedSlots() });
       }
       if (action === 'list') {
-        assertAdmin(req.query.token);
-        return context.res = json({ ok: true, bookings: await listBookings() });
+        assertAdmin(req.query?.token);
+        return res.status(200).json({ ok: true, bookings: await listBookings() });
       }
-      return context.res = json({ ok: false, message: '未知请求' }, 400);
+      return res.status(400).json({ ok: false, message: '未知请求' });
     }
 
-    const payload = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-    if (payload.action !== 'book') return context.res = json({ ok: false, message: '未知请求' }, 400);
+    if (req.method !== 'POST') {
+      return res.status(400).json({ ok: false, message: '未知请求' });
+    }
+
+    const payload = parseBody(req.body);
+    if (payload.action !== 'book') {
+      return res.status(400).json({ ok: false, message: '未知请求' });
+    }
 
     const booking = await createBooking(payload);
-    return context.res = json({ ok: true, booking });
+    return res.status(200).json({ ok: true, booking });
   } catch (error) {
-    return context.res = json({ ok: false, message: error.message || '请求失败' }, error.statusCode || 400);
+    return res.status(error.statusCode || 400).json({ ok: false, message: error.message || '请求失败' });
   }
 };

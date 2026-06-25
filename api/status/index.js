@@ -1,12 +1,28 @@
-const { assertAdmin, json, updateBookingStatus } = require('../_shared');
+const { assertAdmin, updateBookingStatus } = require('../_shared');
 
-module.exports = async function status(context, req) {
+function parseBody(body) {
+  if (!body) return {};
+  if (typeof body === 'string') {
+    try {
+      return JSON.parse(body);
+    } catch {
+      return {};
+    }
+  }
+  return body;
+}
+
+module.exports = async function status(req, res) {
   try {
-    const payload = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+    if (req.method !== 'POST') {
+      return res.status(400).json({ ok: false, message: '未知请求' });
+    }
+
+    const payload = parseBody(req.body);
     assertAdmin(payload.token);
     const booking = await updateBookingStatus(payload.id, payload.status);
-    return context.res = json({ ok: true, booking });
+    return res.status(200).json({ ok: true, booking });
   } catch (error) {
-    return context.res = json({ ok: false, message: error.message || '操作失败' }, error.statusCode || 400);
+    return res.status(error.statusCode || 400).json({ ok: false, message: error.message || '操作失败' });
   }
 };

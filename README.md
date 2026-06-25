@@ -20,58 +20,68 @@
 - `package.json`：Azure Functions 所需依赖。
 - `server.js`：本地预览的简易静态服务。
 
-## 如何部署到 Azure Static Web Apps
+## 如何部署到 Vercel（推荐，无需 Azure 账号）
 
 ### 1. 准备 GitHub 仓库
 
 1. 将本项目文件推送到 GitHub 仓库。
-2. 确保仓库包含 `package.json`、`staticwebapp.config.json`、`api/` 目录和 `index.html`、`admin.html`。
+2. 确保仓库包含 `package.json`、`vercel.json`、`api/` 目录和 `index.html`、`admin.html`。
 
-### 2. 创建 Azure Storage Account
+### 2. 创建 Vercel 项目
 
-在 Azure 门户创建 Storage Account。创建完成后，打开 Storage Account，进入：
+1. 登录 `https://vercel.com`
+2. 点击 `New Project`
+3. 连接你的 GitHub 账户
+4. 选择仓库 `crotis`
+5. 选择 `Import`
+6. 在项目设置中保持默认配置，点击 `Deploy`
 
-- `Access keys` -> `Connection string`
+Vercel 会自动识别 `api/` 目录，并部署你的后端接口。
 
-记录该连接字符串，用于后续部署配置。
+### 3. 设置 Vercel 环境变量
 
-### 3. 创建 Azure Static Web App
+在 Vercel 仪表盘中打开项目设置：
 
-在 Azure 门户中创建 Static Web Apps：
+- `AZURE_STORAGE_CONNECTION_STRING` = 你的 Storage 连接字符串
+- `ADMIN_TOKEN` = 你的管理员口令
+- `BOOKINGS_TABLE_NAME` = `Bookings`
 
-- Build Presets：`Custom`
-- App location：`/`
-- Api location：`api`
-- Output location：留空
-- 选择 GitHub 仓库并授权
+这三个配置是后端接口正常运行所必须的。
 
-创建完成后，Azure 会自动生成一个 GitHub Actions workflow，也可使用本项目已创建的文件：
+### 4. 部署完成后访问
 
-- `.github/workflows/azure-static-web-apps.yml`
-
-### 4. 设置 Azure 环境变量（应用设置）
-
-进入 Azure Static Web App 的 `Configuration` 或 `Workflow` 设置，添加以下环境变量：
+部署成功后，Vercel 会给你一个应用域名，例如：
 
 ```text
-AZURE_STORAGE_CONNECTION_STRING=你的 Storage 连接字符串
-ADMIN_TOKEN=你的管理员口令
-BOOKINGS_TABLE_NAME=Bookings
+https://<your-vercel-app>.vercel.app
 ```
 
-`ADMIN_TOKEN` 是管理员登录 `admin.html` 时使用的口令，例如：`cortis2026`。
+访问前端页面：
 
-### 5. 配置 GitHub Secrets
+```text
+https://<your-vercel-app>.vercel.app/index.html
+https://<your-vercel-app>.vercel.app/admin.html
+```
 
-在 GitHub 仓库的 `Settings > Secrets and variables > Actions` 中添加：
+### 5. 如果你还想使用 Azure
 
-- `AZURE_STATIC_WEB_APPS_API_TOKEN`：Azure Static Web Apps 发布令牌
+如果你未来获得 Azure 账号，也可以回头使用 `staticwebapp.config.json` 和 Azure Static Web Apps 部署。
 
-你可以在 Azure Static Web App 的部署中心找到该令牌。
+### 6. 本地调试
 
-### 6. 推送代码触发部署
+如果你希望先在本地运行项目，可以直接使用本项目提供的本地服务器：
 
-将项目推送到 `main` 分支后，GitHub Actions 会自动触发部署。部署成功后，你会获得一个公共网址。
+```powershell
+npm install
+npm run preview
+```
+
+然后打开浏览器访问：
+
+```text
+http://localhost:4280/index.html
+http://localhost:4280/admin.html
+```
 
 ## 访问已部署网站
 
@@ -118,6 +128,25 @@ http://localhost:4280/admin.html
 ```
 
 如果 `npm install` 遇到本地原生模块构建失败，可以直接运行 `node server.js`。
+
+## GitHub Pages 静态演示
+
+如果你只需要一个可访问的静态演示页面（无后端接口），可以使用 GitHub Pages：
+
+1. 上传代码到 GitHub 仓库
+2. 打开仓库页面，进入 `Settings`
+3. 左侧选择 `Pages`
+4. 在 `Source` 选择 `Deploy from a branch`
+5. 选择 Branch: `main`，Folder: `/ (root)`
+6. 点击 `Save`
+
+几分钟后，你会得到类似：
+
+```text
+https://<你的用户名>.github.io/crotis/index.html
+```
+
+此时页面会自动进入本地演示模式，不再尝试连接后端接口。注意：该模式仅用于演示，预约数据会保存在浏览器本地存储，后端 `api/` 接口不可用。
 
 ## 项目功能
 

@@ -303,6 +303,8 @@
 
     function apiReady() {
       if (window.location.protocol === 'file:') return false;
+      const host = window.location.hostname || '';
+      if (host.endsWith('github.io') || host.endsWith('gitee.io')) return false;
       return Boolean(CONFIG.apiUrl);
     }
 
