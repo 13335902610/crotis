@@ -380,7 +380,7 @@
       <div class="status-bar">
         <span class="tag">Vision Pro 预约</span>
         <span class="tag">单人体验席</span>
-        <a class="tag" href="./admin.html">管理员入口</a>
+        
       </div>
       <div class="address">地址：江苏省徐州市</div>
       <h1>CORTIS 舞蹈室纪录片</h1>
@@ -459,220 +459,181 @@
   </div>
 
   <script>
-    const CONFIG = {
-      apiUrl: '/api/bookings'
-    };
+    const API_URL = "https://script.google.com/macros/s/AKfycbybB_3tDeKf6Vh7h-goMO0bK_r2P269XqU_tW6zr1VA1jI96HulB5ubxnRfFH4oDm8c/exec";
+const startDate = new Date(2026, 6, 1);
+const endDate = new Date(2026, 8, 1);
+const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+const dates = buildDates(startDate, endDate);
+const slots = buildSlots();
+let bookedSlots = new Set();
 
-    const startDate = new Date(2026, 6, 1);
-    const endDate = new Date(2026, 8, 1);
-    const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-    const dates = buildDates(startDate, endDate);
-    const slots = buildSlots();
-    let bookedSlots = new Set();
+const state = {
+  date: dates[0],
+  slot: slots[0]
+};
 
-    const state = {
-      date: dates[0],
-      slot: slots[0]
-    };
+const dateRow = document.querySelector('#dateRow');
+const slotGrid = document.querySelector('#slotGrid');
+const remainText = document.querySelector('#remainText');
+const summaryText = document.querySelector('#summaryText');
+const priceText = document.querySelector('#priceText');
+const submitBtn = document.querySelector('#submitBtn');
+const toast = document.querySelector('#toast');
 
-    const dateRow = document.querySelector('#dateRow');
-    const slotGrid = document.querySelector('#slotGrid');
-    const remainText = document.querySelector('#remainText');
-    const summaryText = document.querySelector('#summaryText');
-    const priceText = document.querySelector('#priceText');
-    const submitBtn = document.querySelector('#submitBtn');
-    const toast = document.querySelector('#toast');
+// 本地文件判断逻辑废弃，统一走谷歌接口
+function apiReady() {
+  return !!API_URL;
+}
 
-    function apiReady() {
-      if (window.location.protocol === 'file:') return false;
-      const host = window.location.hostname || '';
-      if (host.endsWith('github.io') || host.endsWith('gitee.io')) return false;
-      return Boolean(CONFIG.apiUrl);
-    }
+function buildDates(start, end) {
+  const list = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    const month = cursor.getMonth() + 1;
+    const day = cursor.getDate();
+    list.push({
+      label: weekdays[cursor.getDay()],
+      day: `${month}/${day}`,
+      key: `${month}-${day}`
+    });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return list;
+}
 
-    function buildDates(start, end) {
-      const list = [];
-      const cursor = new Date(start);
-      while (cursor <= end) {
-        const month = cursor.getMonth() + 1;
-        const day = cursor.getDate();
-        list.push({
-          label: weekdays[cursor.getDay()],
-          day: `${month}/${day}`,
-          key: `${month}-${day}`
-        });
-        cursor.setDate(cursor.getDate() + 1);
-      }
-      return list;
-    }
+function buildSlots() {
+  return Array.from({ length: 10 }, (_, index) => {
+    const hour = index + 9;
+    return { time: `${String(hour).padStart(2, '0')}:00` };
+  });
+}
 
-    function buildSlots() {
-      return Array.from({ length: 10 }, (_, index) => {
-        const hour = index + 9;
-        return { time: `${String(hour).padStart(2, '0')}:00` };
-      });
-    }
+function slotKey(date, slot) {
+  return `${date.day} ${slot.time}`;
+}
 
-    function slotKey(date, slot) {
-      return `${date.day} ${slot.time}`;
-    }
-
-    function renderDates() {
-      dateRow.innerHTML = '';
-      dates.forEach(date => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = `choice${date.key === state.date.key ? ' is-active' : ''}`;
-        button.innerHTML = `<strong>${date.day}</strong><small>${date.label}</small>`;
-        button.addEventListener('click', () => {
-          state.date = date;
-          render();
-        });
-        dateRow.appendChild(button);
-      });
-    }
-
-    function renderSlots() {
-      slotGrid.innerHTML = '';
-      let availableCount = 0;
-      slots.forEach(slot => {
-        const taken = bookedSlots.has(slotKey(state.date, slot));
-        if (!taken) availableCount += 1;
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.disabled = taken;
-        button.className = `choice${state.slot.time === slot.time ? ' is-active' : ''}`;
-        button.innerHTML = `<strong>${slot.time}</strong><small>${taken ? '已约满' : '剩余 1 席'}</small>`;
-        button.addEventListener('click', () => {
-          state.slot = slot;
-          updateSummary();
-          renderSlots();
-        });
-        slotGrid.appendChild(button);
-      });
-      remainText.textContent = apiReady() ? `当天剩余 ${availableCount} 场` : '预览模式，配置后台后锁定场次';
-    }
-
-    function updateSummary() {
-      summaryText.textContent = `${state.date.day} ${state.date.label} ${state.slot.time} · 1 人`;
-      priceText.textContent = '预计 ¥39';
-    }
-
-    function showToast(message) {
-      toast.textContent = message;
-      toast.classList.add('show');
-      window.clearTimeout(showToast.timer);
-      showToast.timer = window.setTimeout(() => toast.classList.remove('show'), 3000);
-    }
-
-    function loadDemoBookings() {
-      const demoBookings = JSON.parse(localStorage.getItem('demoBookings') || '[]');
-      bookedSlots = new Set(demoBookings.map(item => `${item.date} ${item.time}`));
-    }
-
-    async function loadAvailability() {
-      if (!apiReady()) {
-        loadDemoBookings();
-        render();
-        return;
-      }
-      try {
-        const response = await fetch(`${CONFIG.apiUrl}?action=availability`);
-        const data = await response.json();
-        bookedSlots = new Set((data.booked || []).map(item => `${item.date} ${item.time}`));
-      } catch (error) {
-        loadDemoBookings();
-        showToast('暂时无法同步预约状态，已加载本地演示数据。');
-      }
+function renderDates() {
+  dateRow.innerHTML = '';
+  dates.forEach(date => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `choice${date.key === state.date.key ? ' is-active' : ''}`;
+    button.innerHTML = `<strong>${date.day}</strong><small>${date.label}</small>`;
+    button.addEventListener('click', () => {
+      state.date = date;
       render();
-    }
+    });
+    dateRow.appendChild(button);
+  });
+}
 
-    async function submitBooking() {
-      const name = document.querySelector('#name').value.trim();
-      const phone = document.querySelector('#phone').value.trim();
-      const source = document.querySelector('#source').value;
-      const key = slotKey(state.date, state.slot);
-
-      if (bookedSlots.has(key)) {
-        showToast('这个场次刚刚被约满，请选择其他时间。');
-        return;
-      }
-      if (!name) {
-        showToast('请填写预约昵称。');
-        return;
-      }
-      if (!/^1\d{10}$/.test(phone)) {
-        showToast('请填写 11 位手机号。');
-        return;
-      }
-
-      submitBtn.disabled = true;
-      submitBtn.textContent = '提交中';
-
-      try {
-        if (!apiReady()) {
-          const booking = {
-            id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-            date: state.date.day,
-            weekday: state.date.label,
-            time: state.slot.time,
-            name,
-            phone,
-            source,
-            price: 39,
-            status: 'pending',
-            createdAt: new Intl.DateTimeFormat('zh-CN', {
-              year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
-            }).format(new Date()).replace(/\//g, '-')
-          };
-          const demoBookings = JSON.parse(localStorage.getItem('demoBookings') || '[]');
-          demoBookings.push(booking);
-          localStorage.setItem('demoBookings', JSON.stringify(demoBookings));
-          bookedSlots.add(key);
-          showToast(`预览预约已登记：${state.date.day} ${state.slot.time}。`);
-          render();
-          return;
-        }
-
-        const response = await fetch(CONFIG.apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json;charset=utf-8' },
-          body: JSON.stringify({
-            action: 'book',
-            date: state.date.day,
-            weekday: state.date.label,
-            time: state.slot.time,
-            name,
-            phone,
-            source,
-            price: 39
-          })
-        });
-        const result = await response.json();
-        if (!result.ok) throw new Error(result.message || '提交失败');
-        bookedSlots.add(key);
-        showToast(`预约已登记：${state.date.day} ${state.slot.time}，1 人。`);
-        render();
-      } catch (error) {
-        showToast(error.message || '提交失败，请稍后再试。');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = '确认预约';
-      }
-    }
-
-    function render() {
-      renderDates();
-      renderSlots();
+function renderSlots() {
+  slotGrid.innerHTML = '';
+  let availableCount = 0;
+  slots.forEach(slot => {
+    const taken = bookedSlots.has(slotKey(state.date, slot));
+    if (!taken) availableCount += 1;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.disabled = taken;
+    button.className = `choice${state.slot.time === slot.time ? ' is-active' : ''}`;
+    button.innerHTML = `<strong>${slot.time}</strong><small>${taken ? '已约满' : '剩余 1 席'}</small>`;
+    button.addEventListener('click', () => {
+      state.slot = slot;
       updateSummary();
-    }
+      renderSlots();
+    });
+    slotGrid.appendChild(button);
+  });
+  remainText.textContent = `当天剩余 ${availableCount} 场`;
+}
 
-    document.querySelector('#submitBtn').addEventListener('click', submitBooking);
-    loadAvailability();
+function updateSummary() {
+  summaryText.textContent = `${state.date.day} ${state.date.label} ${state.slot.time} · 1 人`;
+  priceText.textContent = '预计 ¥39';
+}
 
-    if (window.location.protocol === 'file:') {
-      showToast('当前为文件预览模式，请使用 npm start 启动本地服务再访问页面。');
+function showToast(message) {
+  toast.textContent = message;
+  toast.classList.add('show');
+  window.clearTimeout(showToast.timer);
+  showToast.timer = window.setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// 从谷歌表格读取已占用场次
+async function loadAvailability() {
+  try {
+    const res = await fetch(`${API_URL}?pwd=cortis123`);
+    const json = await res.json();
+    if(json.code === 403) throw new Error("接口权限异常");
+    const rows = json.list.slice(1);
+    bookedSlots = new Set();
+    rows.forEach(row=>{
+      const dateStr = row[0];
+      const timeStr = row[2];
+      bookedSlots.add(`${dateStr} ${timeStr}`);
+    })
+    render();
+  } catch (err) {
+    showToast("加载场次失败："+err.message);
+  }
+}
+
+// 提交预约写入谷歌表格
+async function submitBooking() {
+  const name = document.querySelector('#name').value.trim();
+  const phone = document.querySelector('#phone').value.trim();
+  const source = document.querySelector('#source').value;
+  const key = slotKey(state.date, state.slot);
+
+  if (bookedSlots.has(key)) {
+    showToast('这个场次刚刚被约满，请选择其他时间。');
+    return;
+  }
+  if (!name) {
+    showToast('请填写预约昵称。');
+    return;
+  }
+  if (!/^1\d{10}$/.test(phone)) {
+    showToast('请填写 11 位手机号。');
+    return;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = '提交中';
+
+  try{
+    const sendData = {
+      name,
+      phone,
+      time: `${state.date.day} ${state.slot.time}`,
+      desc: `来源：${source}，金额39元`
     }
+    const res = await fetch(API_URL,{
+      method:"POST",
+      body:JSON.stringify(sendData)
+    });
+    const json = await res.json();
+    if(json.code !== 0) throw new Error(json.msg);
+    bookedSlots.add(key);
+    showToast(`预约成功：${state.date.day} ${state.slot.time}`);
+    render();
+  }catch(err){
+    showToast("预约失败："+err.message);
+  }finally{
+    submitBtn.disabled = false;
+    submitBtn.textContent = '确认预约';
+  }
+}
+
+function render() {
+  renderDates();
+  renderSlots();
+  updateSummary();
+}
+
+document.querySelector('#submitBtn').addEventListener('click', submitBooking);
+loadAvailability();
   </script>
 </body>
 </html>
