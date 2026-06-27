@@ -73,6 +73,17 @@ npm install
 npm run preview
 ```
 
+> 本地运行时，项目会自动读取根目录下的 `.env` 文件。你可以先复制 `.env.example` 为 `.env`，然后填入管理员口令和其他本地配置。
+
+示例 `.env` 内容：
+
+```text
+ADMIN_TOKEN=你的管理员口令
+# 可选项，仅在本地使用 Azure 存储时配置
+# AZURE_STORAGE_CONNECTION_STRING=你的连接字符串
+# BOOKINGS_TABLE_NAME=Bookings
+```
+
 然后打开浏览器访问：
 
 ```text

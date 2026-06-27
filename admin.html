@@ -298,6 +298,7 @@
     const statusFilterEl = document.querySelector('#statusFilter');
     const toast = document.querySelector('#toast');
     let bookings = [];
+    let autoReloadTimer = null;
 
     tokenEl.value = localStorage.getItem('adminToken') || '';
 
@@ -383,12 +384,20 @@
         if (!data.ok) throw new Error(data.message || '读取失败');
         bookings = data.bookings || [];
         renderRows();
+        scheduleAutoReload();
       } catch (error) {
         showToast(error.message || '读取失败，请检查接口地址和口令。');
       } finally {
         loadBtn.disabled = false;
         loadBtn.textContent = '刷新';
       }
+    }
+
+    function scheduleAutoReload() {
+      if (autoReloadTimer) clearTimeout(autoReloadTimer);
+      autoReloadTimer = window.setTimeout(() => {
+        if (document.hasFocus()) loadBookings();
+      }, 15000);
     }
 
     async function updateStatus(id, status) {
@@ -440,6 +449,13 @@
     loadBtn.addEventListener('click', loadBookings);
     exportBtn.addEventListener('click', exportCsv);
     statusFilterEl.addEventListener('change', renderRows);
+
+    window.addEventListener('focus', () => {
+      if (tokenEl.value.trim()) loadBookings();
+    });
+
+    // 自动首次加载管理员数据
+    if (tokenEl.value.trim()) loadBookings();
   </script>
 </body>
 </html>

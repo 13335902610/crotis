@@ -9,7 +9,8 @@
     "test": "node -e \"console.log('No tests configured')\""
   },
   "dependencies": {
-    "@azure/data-tables": "^13.3.0"
+    "@azure/data-tables": "^13.3.0",
+    "dotenv": "^16.1.4"
   },
   "devDependencies": {}
 }

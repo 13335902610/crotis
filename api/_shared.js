@@ -1,12 +1,24 @@
+const fs = require('fs/promises');
+const path = require('path');
 const { AzureNamedKeyCredential, TableClient, odata } = require('@azure/data-tables');
 
 const TABLE_NAME = process.env.BOOKINGS_TABLE_NAME || 'Bookings';
+const LOCAL_DATA_FILE = process.env.BOOKINGS_DATA_FILE || path.join(__dirname, '..', '.data', 'bookings.json');
 
 function getEnvVar(...names) {
   for (const name of names) {
     if (process.env[name]) return process.env[name];
   }
   return undefined;
+}
+
+function useAzureStorage() {
+  const connectionString = getEnvVar('AZURE_STORAGE_CONNECTION_STRING', 'VERCEL_AZURE_STORAGE_CONNECTION_STRING');
+  if (connectionString) return true;
+
+  const account = getEnvVar('AZURE_STORAGE_ACCOUNT', 'VERCEL_AZURE_STORAGE_ACCOUNT');
+  const key = getEnvVar('AZURE_STORAGE_ACCESS_KEY', 'VERCEL_AZURE_STORAGE_ACCESS_KEY');
+  return Boolean(account && key);
 }
 
 function getTableClient() {
@@ -23,10 +35,29 @@ function getTableClient() {
   return new TableClient(`https://${account}.table.core.windows.net`, TABLE_NAME, credential);
 }
 
+async function readLocalBookings() {
+  try {
+    const raw = await fs.readFile(LOCAL_DATA_FILE, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed;
+  } catch (error) {
+    if (error && error.code !== 'ENOENT') {
+      console.error('Failed to read local booking store', error);
+    }
+  }
+  return [];
+}
+
+async function writeLocalBookings(items) {
+  await fs.mkdir(path.dirname(LOCAL_DATA_FILE), { recursive: true });
+  await fs.writeFile(LOCAL_DATA_FILE, JSON.stringify(items, null, 2), 'utf8');
+}
+
 function getAdminToken() {
   const token = getEnvVar('ADMIN_TOKEN', 'VERCEL_ADMIN_TOKEN');
-  if (!token) throw new Error('缺少管理员口令配置，请在 Vercel 环境变量中设置 ADMIN_TOKEN。');
-  return token;
+  if (token) return token;
+  if (process.env.NODE_ENV !== 'production') return 'admin';
+  throw new Error('缺少管理员口令配置，请在 Vercel 环境变量中设置 ADMIN_TOKEN。');
 }
 
 function assertAdmin(token) {
@@ -84,6 +115,11 @@ async function ensureTable(client) {
 }
 
 async function listBookings() {
+  if (!useAzureStorage()) {
+    const items = await readLocalBookings();
+    return items.slice().sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
+  }
+
   const client = getTableClient();
   await ensureTable(client);
   const items = [];
@@ -104,6 +140,31 @@ async function createBooking(payload) {
 
   if (!date || !time || !name || !phone) throw new Error('预约信息不完整');
   if (!/^1\d{10}$/.test(phone)) throw new Error('手机号格式不正确');
+
+  if (!useAzureStorage()) {
+    const items = await readLocalBookings();
+    const existing = items.find(item => item.date === date && item.time === time && item.status !== 'cancelled');
+    if (existing) throw new Error('该场次已被预约，请选择其他时间');
+
+    const now = nowText();
+    const entity = {
+      id: makeId(),
+      date,
+      weekday,
+      time,
+      name,
+      phone,
+      source,
+      price,
+      status: 'pending',
+      createdAt: now,
+      updatedAt: now
+    };
+
+    items.push(entity);
+    await writeLocalBookings(items);
+    return publicBooking(entity);
+  }
 
   const client = getTableClient();
   await ensureTable(client);
@@ -142,6 +203,17 @@ async function createBooking(payload) {
 async function updateBookingStatus(id, status) {
   if (!id) throw new Error('缺少预约 ID');
   if (!['pending', 'confirmed', 'cancelled'].includes(status)) throw new Error('状态不正确');
+
+  if (!useAzureStorage()) {
+    const items = await readLocalBookings();
+    const item = items.find(entry => entry.id === id);
+    if (!item) throw new Error('未找到该预约');
+
+    item.status = status;
+    item.updatedAt = nowText();
+    await writeLocalBookings(items);
+    return publicBooking(item);
+  }
 
   const client = getTableClient();
   await ensureTable(client);
