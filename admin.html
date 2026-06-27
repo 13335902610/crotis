@@ -286,156 +286,176 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbybB_3tDeKf6Vh7h-goMO0bK_r2P269XqU_tW6zr1VA1jI96HulB5ubxnRfFH4oDm8c/exec";
-const rowsEl = document.querySelector('#bookingRows');
-const loadBtn = document.querySelector('#loadBtn');
-const exportBtn = document.querySelector('#exportBtn');
-const tokenEl = document.querySelector('#adminToken');
-const statusFilterEl = document.querySelector('#statusFilter');
-const toast = document.querySelector('#toast');
-let bookings = [];
-let autoReloadTimer = null;
+    const CONFIG = {
+      apiUrl: '/api/bookings',
+      statusUrl: '/api/status'
+    };
 
-tokenEl.value = localStorage.getItem('adminToken') || '';
+    const rowsEl = document.querySelector('#bookingRows');
+    const loadBtn = document.querySelector('#loadBtn');
+    const exportBtn = document.querySelector('#exportBtn');
+    const tokenEl = document.querySelector('#adminToken');
+    const statusFilterEl = document.querySelector('#statusFilter');
+    const toast = document.querySelector('#toast');
+    let bookings = [];
+    let autoReloadTimer = null;
 
-function showToast(message) {
-  toast.textContent = message;
-  toast.classList.add('show');
-  window.clearTimeout(showToast.timer);
-  showToast.timer = window.setTimeout(() => toast.classList.remove('show'), 2600);
-}
+    tokenEl.value = localStorage.getItem('adminToken') || '';
 
-function statusLabel(status) {
-  return {
-    pending: '待确认',
-    confirmed: '已确认',
-    cancelled: '已取消'
-  }[status] || status;
-}
-
-function updateStats() {
-  document.querySelector('#totalCount').textContent = bookings.length;
-  document.querySelector('#pendingCount').textContent = bookings.filter(item => item.status === 'pending').length;
-  document.querySelector('#confirmedCount').textContent = bookings.filter(item => item.status === 'confirmed').length;
-  document.querySelector('#cancelledCount').textContent = bookings.filter(item => item.status === 'cancelled').length;
-}
-
-function renderRows() {
-  const filter = statusFilterEl.value;
-  const visible = filter === 'all' ? bookings : bookings.filter(item => item.status === filter);
-  updateStats();
-
-  if (!visible.length) {
-    rowsEl.innerHTML = '<tr><td class="empty" colspan="9">暂无预约记录</td></tr>';
-    return;
-  }
-
-  rowsEl.innerHTML = visible.map(item => `
-    <tr>
-      <td>${item.date || ''}</td>
-      <td>${item.time || ''}</td>
-      <td>${item.name || ''}</td>
-      <td>${item.phone || ''}</td>
-      <td>${item.source || ''}</td>
-      <td>¥39</td>
-      <td><span class="status ${item.status === 'cancelled' ? 'cancelled' : ''}">${statusLabel(item.status)}</span></td>
-      <td>${item.createTime || ''}</td>
-      <td>
-        <div class="row-actions">
-          <button class="gold" type="button" onclick="updateStatus('${item.id}', 'confirmed')">确认</button>
-          <button class="warn" type="button" onclick="updateStatus('${item.id}', 'cancelled')">取消</button>
-        </div>
-      </td>
-    </tr>
-  `).join('');
-}
-
-// 读取全部云端预约数据
-async function loadBookings() {
-  const pwd = tokenEl.value.trim();
-  if (!pwd) {
-    showToast('请输入管理员口令');
-    return;
-  }
-  localStorage.setItem('adminToken', pwd);
-  loadBtn.disabled = true;
-  loadBtn.textContent = '读取中';
-  try {
-    const res = await fetch(`${API_URL}?pwd=${encodeURIComponent(pwd)}`);
-    const json = await res.json();
-    if(json.code === 403){
-      showToast("管理员密码错误");
-      rowsEl.innerHTML = '<tr><td class="empty" colspan="9">密码错误，无法读取数据</td></tr>';
-      return;
+    function apiReady() {
+      if (window.location.protocol === 'file:') return false;
+      const host = window.location.hostname || '';
+      if (host.endsWith('github.io') || host.endsWith('gitee.io')) return false;
+      return Boolean(CONFIG.apiUrl);
     }
-    // 转换表格数据为列表
-    const rawList = json.list.slice(1);
-    bookings = rawList.map((row,idx)=>{
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add('show');
+      window.clearTimeout(showToast.timer);
+      showToast.timer = window.setTimeout(() => toast.classList.remove('show'), 2600);
+    }
+
+    function statusLabel(status) {
       return {
-        id: idx,
-        date: row[0],
-        time: row[2],
-        name: row[0],
-        phone: row[1],
-        source: row[3],
-        createTime: row[4],
-        status: "pending"
+        pending: '待确认',
+        confirmed: '已确认',
+        cancelled: '已取消'
+      }[status] || status;
+    }
+
+    function updateStats() {
+      document.querySelector('#totalCount').textContent = bookings.length;
+      document.querySelector('#pendingCount').textContent = bookings.filter(item => item.status === 'pending').length;
+      document.querySelector('#confirmedCount').textContent = bookings.filter(item => item.status === 'confirmed').length;
+      document.querySelector('#cancelledCount').textContent = bookings.filter(item => item.status === 'cancelled').length;
+    }
+
+    function renderRows() {
+      const filter = statusFilterEl.value;
+      const visible = filter === 'all' ? bookings : bookings.filter(item => item.status === filter);
+      updateStats();
+
+      if (!visible.length) {
+        rowsEl.innerHTML = '<tr><td class="empty" colspan="9">暂无预约记录</td></tr>';
+        return;
       }
-    })
-    renderRows();
-    scheduleAutoReload();
-  } catch (error) {
-    showToast('读取失败：'+error.message);
-  } finally {
-    loadBtn.disabled = false;
-    loadBtn.textContent = '刷新';
-  }
-}
 
-function scheduleAutoReload() {
-  if (autoReloadTimer) clearTimeout(autoReloadTimer);
-  autoReloadTimer = window.setTimeout(() => {
-    if (document.hasFocus()) loadBookings();
-  }, 15000);
-}
+      rowsEl.innerHTML = visible.map(item => `
+        <tr>
+          <td>${item.date || ''} ${item.weekday || ''}</td>
+          <td>${item.time || ''}</td>
+          <td>${item.name || ''}</td>
+          <td>${item.phone || ''}</td>
+          <td>${item.source || ''}</td>
+          <td>¥${item.price || 39}</td>
+          <td><span class="status ${item.status === 'cancelled' ? 'cancelled' : ''}">${statusLabel(item.status)}</span></td>
+          <td>${item.createdAt || ''}</td>
+          <td>
+            <div class="row-actions">
+              <button class="gold" type="button" onclick="updateStatus('${item.id}', 'confirmed')">确认</button>
+              <button class="warn" type="button" onclick="updateStatus('${item.id}', 'cancelled')">取消</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
 
-// 状态修改（谷歌表格无状态字段，这里仅前端展示区分）
-async function updateStatus(id, status) {
-  showToast("提示：谷歌表格版本仅支持查看，状态修改需手动在表格编辑");
-  loadBookings();
-}
+    async function loadBookings() {
+      const token = tokenEl.value.trim();
+      if (!apiReady()) {
+        const demoBookings = JSON.parse(localStorage.getItem('demoBookings') || '[]');
+        bookings = demoBookings;
+        renderRows();
+        showToast('当前为本地演示模式，已加载本地预约信息。');
+        return;
+      }
+      if (!token) {
+        showToast('请输入管理员口令。');
+        return;
+      }
 
-// 导出CSV
-function exportCsv() {
-  if (!bookings.length) {
-    showToast('暂无可导出的预约记录。');
-    return;
-  }
-  const header = ['日期', '时间', '昵称', '手机号', '备注', '提交时间', '状态'];
-  const body = bookings.map(item => [
-    item.date, item.time, item.name, item.phone, item.source, item.createTime, statusLabel(item.status)
-  ]);
-  const csv = [header, ...body]
-    .map(row => row.map(value => `"${String(value || '').replace(/"/g, '""')}"`).join(','))
-    .join('\n');
-  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = 'cortis-bookings.csv';
-  link.click();
-  URL.revokeObjectURL(url);
-}
+      localStorage.setItem('adminToken', token);
+      loadBtn.disabled = true;
+      loadBtn.textContent = '读取中';
+      try {
+        const response = await fetch(`${CONFIG.apiUrl}?action=list&token=${encodeURIComponent(token)}`);
+        const data = await response.json();
+        if (!data.ok) throw new Error(data.message || '读取失败');
+        bookings = data.bookings || [];
+        renderRows();
+        scheduleAutoReload();
+      } catch (error) {
+        showToast(error.message || '读取失败，请检查接口地址和口令。');
+      } finally {
+        loadBtn.disabled = false;
+        loadBtn.textContent = '刷新';
+      }
+    }
 
-loadBtn.addEventListener('click', loadBookings);
-exportBtn.addEventListener('click', exportCsv);
-statusFilterEl.addEventListener('change', renderRows);
+    function scheduleAutoReload() {
+      if (autoReloadTimer) clearTimeout(autoReloadTimer);
+      autoReloadTimer = window.setTimeout(() => {
+        if (document.hasFocus()) loadBookings();
+      }, 15000);
+    }
 
-window.addEventListener('focus', () => {
-  if (tokenEl.value.trim()) loadBookings();
-});
+    async function updateStatus(id, status) {
+      const token = tokenEl.value.trim();
+      if (!apiReady()) {
+        showToast('请通过本地服务打开 admin.html，而不是直接用文件方式打开。');
+        return;
+      }
+      if (!token) {
+        showToast('请输入管理员口令。');
+        return;
+      }
+      try {
+        const response = await fetch(CONFIG.statusUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json;charset=utf-8' },
+          body: JSON.stringify({ token, id, status })
+        });
+        const data = await response.json();
+        if (!data.ok) throw new Error(data.message || '操作失败');
+        showToast('状态已更新。');
+        await loadBookings();
+      } catch (error) {
+        showToast(error.message || '操作失败。');
+      }
+    }
 
-if (tokenEl.value.trim()) loadBookings();
+    function exportCsv() {
+      if (!bookings.length) {
+        showToast('暂无可导出的预约记录。');
+        return;
+      }
+      const header = ['日期', '星期', '时间', '昵称', '手机号', '来源', '金额', '状态', '提交时间'];
+      const body = bookings.map(item => [
+        item.date, item.weekday, item.time, item.name, item.phone, item.source, item.price, statusLabel(item.status), item.createdAt
+      ]);
+      const csv = [header, ...body]
+        .map(row => row.map(value => `"${String(value || '').replace(/"/g, '""')}"`).join(','))
+        .join('\n');
+      const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'cortis-bookings.csv';
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    loadBtn.addEventListener('click', loadBookings);
+    exportBtn.addEventListener('click', exportCsv);
+    statusFilterEl.addEventListener('change', renderRows);
+
+    window.addEventListener('focus', () => {
+      if (tokenEl.value.trim()) loadBookings();
+    });
+
+    // 自动首次加载管理员数据
+    if (tokenEl.value.trim()) loadBookings();
   </script>
 </body>
 </html>
