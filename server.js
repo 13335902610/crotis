@@ -44,16 +44,8 @@ async function collectBody(req) {
   return raw;
 }
 
-function createContext() {
-  return {
-    res: null,
-    log: console,
-    done: () => {}
-  };
-}
-
 function createReq(req, parsedUrl, body) {
-  const query = Object.fromEntries(parsedUrl.searchParams.entries());
+  const query = parsedUrl?.query || {};
   return {
     method: req.method,
     query,
@@ -72,15 +64,27 @@ async function handleApi(req, res, parsedUrl) {
   }
 
   const body = await collectBody(req);
-  const context = createContext();
-  try {
-    await handler(context, createReq(req, parsedUrl, body));
-    const output = context.res;
-    if (!output) {
-      throw new Error('Missing API response');
+  const reqObj = createReq(req, parsedUrl, body);
+  let statusCode = 200;
+  let headers = { 'Content-Type': 'application/json; charset=utf-8' };
+  let responseBody = '';
+
+  const fakeRes = {
+    status(code) {
+      statusCode = code;
+      return this;
+    },
+    json(payload) {
+      responseBody = JSON.stringify(payload);
+      headers = { ...headers, 'Content-Type': 'application/json; charset=utf-8' };
+      return this;
     }
-    res.writeHead(output.status || 200, output.headers || { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(output.body || '');
+  };
+
+  try {
+    await handler(reqObj, fakeRes);
+    res.writeHead(statusCode, headers);
+    res.end(responseBody);
   } catch (error) {
     const message = error?.message || 'Internal server error';
     res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });

@@ -2,16 +2,14 @@
   "name": "cortis-booking-microsoft",
   "version": "1.0.0",
   "private": true,
-  "description": "Vision Pro CORTIS booking site for Azure Static Web Apps",
+  "description": "Vision Pro CORTIS booking site for Vercel",
   "scripts": {
-    "start": "swa start . --api-location api",
+    "start": "node server.js",
     "preview": "node server.js",
     "test": "node -e \"console.log('No tests configured')\""
   },
   "dependencies": {
     "@azure/data-tables": "^13.3.0"
   },
-  "devDependencies": {
-    "@azure/static-web-apps-cli": "^2.0.0"
-  }
+  "devDependencies": {}
 }

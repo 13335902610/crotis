@@ -2,23 +2,30 @@ const { AzureNamedKeyCredential, TableClient, odata } = require('@azure/data-tab
 
 const TABLE_NAME = process.env.BOOKINGS_TABLE_NAME || 'Bookings';
 
+function getEnvVar(...names) {
+  for (const name of names) {
+    if (process.env[name]) return process.env[name];
+  }
+  return undefined;
+}
+
 function getTableClient() {
-  const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+  const connectionString = getEnvVar('AZURE_STORAGE_CONNECTION_STRING', 'VERCEL_AZURE_STORAGE_CONNECTION_STRING');
   if (connectionString) {
     return TableClient.fromConnectionString(connectionString, TABLE_NAME);
   }
 
-  const account = process.env.AZURE_STORAGE_ACCOUNT;
-  const key = process.env.AZURE_STORAGE_ACCESS_KEY;
-  if (!account || !key) throw new Error('缺少 Azure Storage 配置');
+  const account = getEnvVar('AZURE_STORAGE_ACCOUNT', 'VERCEL_AZURE_STORAGE_ACCOUNT');
+  const key = getEnvVar('AZURE_STORAGE_ACCESS_KEY', 'VERCEL_AZURE_STORAGE_ACCESS_KEY');
+  if (!account || !key) throw new Error('缺少存储配置，请在 Vercel 环境变量中设置 AZURE_STORAGE_CONNECTION_STRING 或 AZURE_STORAGE_ACCOUNT / AZURE_STORAGE_ACCESS_KEY。');
 
   const credential = new AzureNamedKeyCredential(account, key);
   return new TableClient(`https://${account}.table.core.windows.net`, TABLE_NAME, credential);
 }
 
 function getAdminToken() {
-  const token = process.env.ADMIN_TOKEN;
-  if (!token) throw new Error('缺少 ADMIN_TOKEN 配置');
+  const token = getEnvVar('ADMIN_TOKEN', 'VERCEL_ADMIN_TOKEN');
+  if (!token) throw new Error('缺少管理员口令配置，请在 Vercel 环境变量中设置 ADMIN_TOKEN。');
   return token;
 }
 
